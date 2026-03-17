@@ -906,7 +906,7 @@
     <!-- ======================================================= -->
     <script>
         // 🌟 เปลี่ยน URL เป็นของ Backend ที่ Deploy ใหม่ได้เลยครับ
-        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzxaze1r2nOxEbzsrr9ABP03qyfz7u1fDsIytH7tSwF5brwgv4C5BwKNjPa_OUgfFQHnA/exec"; 
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz19FAop4AkN2kfqhfY5QYjjejitp4NsJA4kAtDg7OAlMWTBe3Qq-B43vbh8izquKZqzw/exec"; 
         const COOL_SPINNER = `<svg class="animate-spin inline-block -ml-1 mr-2 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
         let allProperties = []; 
@@ -1795,12 +1795,17 @@
             try {
                 if(GAS_WEB_APP_URL.includes("ใส่_URL")) throw new Error("Use Mock");
                 const response = await fetch(GAS_WEB_APP_URL);
-                const data = await response.json();
+                const data = await response.json(); // 🌟 ตอนนี้จะได้ทั้ง Properties และ Leads
                 
-                const sheetIds = data.map(p => p.id);
+                // 🌟 อัปเดตข้อมูลทั้งบ้านและลูกค้า จาก Google Sheet
+                const fetchedProps = data.properties || [];
+                const sheetIds = fetchedProps.map(p => p.id);
+                
+                // 🌟 นำบ้านตัวอย่าง (Mock Properties) กลับมาแสดงร่วมกับข้อมูลใน Sheet
                 const activeMocks = mockProperties.filter(m => !sheetIds.includes(m.id));
+                allProperties = [...activeMocks, ...fetchedProps];
                 
-                allProperties = [...activeMocks, ...data];
+                globalLeadsData = data.leads || []; 
                 
                 allProperties.sort((a, b) => {
                     const numA = parseInt(String(a.id).replace(/\D/g, '')) || 0;
@@ -1816,6 +1821,11 @@
             loader.classList.remove('flex');
             applyFiltersAndSort(); 
             renderAdminProperties();
+            
+            // 🌟 รีเฟรชตาราง Leads ให้ Admin ด้วย
+            if(currentUser && currentUser.role === 'admin') {
+                renderAdminLeads();
+            }
         }
 
         function toggleFavorite(propId, btnElement) {
@@ -2177,16 +2187,29 @@
         function quickUpdateLeadStatus() {
             const leadId = document.getElementById('vl-current-lead-id').value; 
             const newStatus = document.getElementById('vl-status-select').value;
-            const adminReply = document.getElementById('vl-admin-reply').value; // 🌟 ดึงค่าจาก Textarea
+            const adminReply = document.getElementById('vl-admin-reply').value; 
 
             const leadIndex = globalLeadsData.findIndex(l => String(l.id) === String(leadId));
             if(leadIndex > -1) {
                 const lead = globalLeadsData[leadIndex];
                 lead.status = newStatus;
-                lead.adminReply = adminReply; // 🌟 บันทึกข้อความตอบกลับ
+                lead.adminReply = adminReply; 
                 
+                // 🌟 1. ส่งข้อมูลอัปเดตสถานะลูกค้ายิงตรงไปที่ Google Sheet (Leads)
+                if(GAS_WEB_APP_URL && GAS_WEB_APP_URL.startsWith("http")) {
+                    fetch(GAS_WEB_APP_URL, { 
+                        method: 'POST', 
+                        mode: 'no-cors',
+                        body: JSON.stringify({ action: 'edit_lead', data: lead }),
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                    });
+                }
+
                 if (lead.type === 'ฝากขาย' && lead.propertyId) {
-                    const propIndex = allProperties.findIndex(p => String(p.id) === String(lead.propertyId));
+                    // 🌟 2. แก้บั๊ก! ลบคำว่า "ฝากขาย " ออก เพื่อให้รหัส P021 ไปตรงกับ P021 ใน Properties
+                    let purePropId = lead.propertyId.replace('ฝากขาย ', '').trim();
+                    const propIndex = allProperties.findIndex(p => String(p.id) === String(purePropId));
+                    
                     if (propIndex > -1) {
                         if (newStatus === 'อนุมัติ') {
                             allProperties[propIndex].status = 'Available'; 
@@ -2198,7 +2221,6 @@
                         
                         try {
                             if(GAS_WEB_APP_URL && GAS_WEB_APP_URL.startsWith("http")) {
-                                // 🌟 แก้ไขให้ใช้ mode: 'no-cors' ส่งข้อมูลไป Google Sheet โดยไม่โดนเบราว์เซอร์บล็อก
                                 fetch(GAS_WEB_APP_URL, { 
                                     method: 'POST', 
                                     mode: 'no-cors',
