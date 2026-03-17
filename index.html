@@ -766,10 +766,10 @@
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">สถานะ</label>
                                 <select id="addStatus" class="w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none bg-slate-50 focus:bg-white font-medium transition-all cursor-pointer">
-                                    <option value="Available">เปิดขาย (Available)</option>
-                                    <option value="โครงการใหม่">โครงการใหม่ (New)</option>
-                                    <option value="รออนุมัติ">รออนุมัติ (Pending)</option>
-                                    <option value="Sold">ขายแล้ว (Sold)</option>
+                                    <option value="รออนุมัติ">รออนุมัติ</option>
+                                    <option value="อนุมัติ">อนุมัติ</option>
+                                    <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
+                                    <option value="ขายแล้ว">ขายแล้ว</option>
                                 </select>
                             </div>
                         </div>
@@ -906,7 +906,7 @@
     <!-- ======================================================= -->
     <script>
         // 🌟 เปลี่ยน URL เป็นของ Backend ที่ Deploy ใหม่ได้เลยครับ
-        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz19FAop4AkN2kfqhfY5QYjjejitp4NsJA4kAtDg7OAlMWTBe3Qq-B43vbh8izquKZqzw/exec"; 
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw3Fbhh5zI0cYxdq77zsD6rCtaIq0jYjBw-lzZURHidWczWKSpuyNpCPEmKqNqBvf1-rQ/exec"; 
         const COOL_SPINNER = `<svg class="animate-spin inline-block -ml-1 mr-2 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
         let allProperties = []; 
@@ -1714,7 +1714,7 @@
             const location = currentSelectedLocation;
             const sortOption = document.getElementById('sortFilter') ? document.getElementById('sortFilter').value : 'default';
 
-            let filtered = allProperties.filter(p => p.status !== 'รออนุมัติ');
+            let filtered = allProperties.filter(p => p.status !== 'รออนุมัติ' && p.status !== 'ไม่อนุมัติ');
 
             if (keyword) {
                 filtered = filtered.filter(p => {
@@ -2014,16 +2014,20 @@
             document.getElementById('stat-props').innerText = allProperties.length;
             
             allProperties.forEach(prop => {
-                let statusBadge = `<span class="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">Active</span>`;
+                let statusBadge = `<span class="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">อนุมัติ</span>`;
                 
-                const pStatus = String(prop.status || '').toLowerCase();
+                const pStatus = String(prop.status || '');
 
-                if (pStatus === 'sold' || prop.status === 'ขายแล้ว') {
-                    statusBadge = `<span class="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">Sold</span>`;
-                } else if (prop.status === 'โครงการใหม่') {
+                if (pStatus === 'Sold' || pStatus === 'ขายแล้ว') {
+                    statusBadge = `<span class="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">ขายแล้ว</span>`;
+                } else if (pStatus === 'โครงการใหม่') {
                     statusBadge = `<span class="bg-amber-100 text-amber-600 px-3 py-1 rounded-full text-xs font-bold border border-amber-200">โครงการใหม่</span>`;
-                } else if (prop.status === 'รออนุมัติ') {
+                } else if (pStatus === 'รออนุมัติ') {
                     statusBadge = `<span class="bg-rose-100 text-rose-600 px-3 py-1 rounded-full text-xs font-bold border border-rose-200 animate-pulse flex items-center gap-1 w-max"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>รออนุมัติ</span>`;
+                } else if (pStatus === 'ไม่อนุมัติ') {
+                    statusBadge = `<span class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold border border-red-300">ไม่อนุมัติ</span>`;
+                } else if (pStatus === 'อนุมัติ' || pStatus === 'Available') {
+                    statusBadge = `<span class="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">อนุมัติ</span>`;
                 }
 
                 const safeTitle = prop.title ? prop.title.replace(/'/g, "\\'") : '';
@@ -2057,22 +2061,21 @@
 
         function deleteProp(id) {
             if(confirm('ยืนยันการลบอสังหาริมทรัพย์นี้ออกจากระบบ?')) {
-                allProperties = allProperties.filter(p => p.id !== id);
-                renderAdminProperties();
-                applyFiltersAndSort();
-                showToast('ลบรายการอสังหาฯ เรียบร้อยแล้ว', 'success');
-
                 try {
                     if(GAS_WEB_APP_URL && GAS_WEB_APP_URL.startsWith("http")) {
-                        // 🌟 เพิ่ม mode: 'no-cors' ให้ส่งคำสั่งลบได้ราบรื่น
                         fetch(GAS_WEB_APP_URL, { 
                             method: 'POST', 
-                            mode: 'no-cors',
                             body: JSON.stringify({ action: 'delete_property', data: { id: id } }),
                             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                         });
                     }
-                } catch(e) {}
+                    allProperties = allProperties.filter(p => p.id !== id);
+                    renderAdminProperties();
+                    applyFiltersAndSort();
+                    showToast('ลบรายการอสังหาฯ เรียบร้อยแล้ว', 'success');
+                } catch(e) {
+                    showToast('เกิดข้อผิดพลาดในการลบ', 'error');
+                }
             }
         }
 
@@ -2190,56 +2193,69 @@
             const adminReply = document.getElementById('vl-admin-reply').value; 
 
             const leadIndex = globalLeadsData.findIndex(l => String(l.id) === String(leadId));
-            if(leadIndex > -1) {
-                const lead = globalLeadsData[leadIndex];
-                lead.status = newStatus;
-                lead.adminReply = adminReply; 
-                
-                // 🌟 1. ส่งข้อมูลอัปเดตสถานะลูกค้ายิงตรงไปที่ Google Sheet (Leads)
+            if(leadIndex === -1) return;
+
+            const lead = globalLeadsData[leadIndex];
+            
+            // เปลี่ยนปุ่มเป็นกำลังโหลด
+            const btn = document.querySelector('#viewLeadContent button[onclick="quickUpdateLeadStatus()"]');
+            const oldBtnText = btn.innerHTML;
+            btn.innerHTML = COOL_SPINNER + 'กำลังบันทึก...';
+            btn.disabled = true;
+
+            try {
                 if(GAS_WEB_APP_URL && GAS_WEB_APP_URL.startsWith("http")) {
+                    // 1. อัปเดตข้อมูล Leads (ใช้ mode: 'no-cors' ยิงแล้วจบ ป้องกัน Failed to fetch)
                     fetch(GAS_WEB_APP_URL, { 
                         method: 'POST', 
                         mode: 'no-cors',
-                        body: JSON.stringify({ action: 'edit_lead', data: lead }),
+                        body: JSON.stringify({ action: 'edit_lead', data: { id: lead.id, status: newStatus, adminReply: adminReply } }),
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                    });
-                }
+                    }).catch(e => console.log(e));
 
-                if (lead.type === 'ฝากขาย' && lead.propertyId) {
-                    // 🌟 2. แก้บั๊ก! ลบคำว่า "ฝากขาย " ออก เพื่อให้รหัส P021 ไปตรงกับ P021 ใน Properties
-                    let purePropId = lead.propertyId.replace('ฝากขาย ', '').trim();
-                    const propIndex = allProperties.findIndex(p => String(p.id) === String(purePropId));
-                    
-                    if (propIndex > -1) {
-                        if (newStatus === 'อนุมัติ') {
-                            allProperties[propIndex].status = 'Available'; 
-                        } else if (newStatus === 'ไม่อนุมัติ') {
-                            allProperties[propIndex].status = 'ไม่อนุมัติ';
-                        } else {
-                            allProperties[propIndex].status = 'รออนุมัติ';
+                    // 2. ถ้าเป็นฝากขาย อัปเดตสถานะทรัพย์สินด้วย
+                    if (lead.type === 'ฝากขาย' && lead.propertyId) {
+                        let purePropId = lead.propertyId.replace('ฝากขาย ', '').trim();
+                        const propIndex = allProperties.findIndex(p => String(p.id) === String(purePropId));
+                        
+                        if (propIndex > -1) {
+                            let propStatus = 'รออนุมัติ';
+                            if (newStatus === 'อนุมัติ') propStatus = 'อนุมัติ'; 
+                            else if (newStatus === 'ไม่อนุมัติ') propStatus = 'ไม่อนุมัติ';
+                            else if (newStatus === 'ขายแล้ว') propStatus = 'ขายแล้ว';
+                            
+                            const propDataToUpdate = { ...allProperties[propIndex], status: propStatus };
+                            fetch(GAS_WEB_APP_URL, { 
+                                method: 'POST', 
+                                mode: 'no-cors',
+                                body: JSON.stringify({ action: 'edit_property', data: propDataToUpdate }),
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                            }).catch(e => console.log(e));
+                            
+                            allProperties[propIndex].status = propStatus;
                         }
-                        
-                        try {
-                            if(GAS_WEB_APP_URL && GAS_WEB_APP_URL.startsWith("http")) {
-                                fetch(GAS_WEB_APP_URL, { 
-                                    method: 'POST', 
-                                    mode: 'no-cors',
-                                    body: JSON.stringify({ action: 'edit_property', data: allProperties[propIndex] }),
-                                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                                });
-                            }
-                        } catch(e){}
-                        
-                        renderAdminProperties(); 
-                        applyFiltersAndSort();   
                     }
                 }
 
-                renderAdminLeads(); 
-            }
+                // อัปเดตหน้าเว็บทันที
+                setTimeout(() => {
+                    lead.status = newStatus;
+                    lead.adminReply = adminReply; 
+                    renderAdminProperties(); 
+                    applyFiltersAndSort();   
+                    renderAdminLeads(); 
+                    closeModal('viewLeadModal', 'viewLeadContent');
+                    showToast(currentLang === 'en' ? 'Data updated successfully!' : 'บันทึกและส่งให้ลูกค้าเรียบร้อย!', 'success');
+                    btn.innerHTML = oldBtnText;
+                    btn.disabled = false;
+                }, 500);
 
-            closeModal('viewLeadModal', 'viewLeadContent');
-            setTimeout(() => { showToast(currentLang === 'en' ? 'Data updated and sent to customer!' : 'บันทึกสถานะและส่งข้อความให้ลูกค้าเรียบร้อย!', 'success'); }, 400);
+            } catch (err) {
+                console.error(err);
+                showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+                btn.innerHTML = oldBtnText;
+                btn.disabled = false;
+            }
         }
 
         // 🌟 7. ฟังก์ชันเปิดประวัติการทำรายการ (ฝั่งลูกค้า)
@@ -2274,6 +2290,15 @@
                     let displayStatus = lead.status;
                     if(displayStatus === "New Lead") displayStatus = "กำลังรอเจ้าหน้าที่ติดต่อกลับ";
 
+                    // 🌟 จัดรูปแบบเวลาให้สวยงาม ป้องกันคำว่า เวลาอินโดจีน
+                    let displayTime = lead.time || 'ไม่ระบุเวลา';
+                    if (displayTime.includes('GMT') || displayTime.includes('เวลาอินโดจีน')) {
+                        let d = new Date(displayTime);
+                        if (!isNaN(d)) {
+                            displayTime = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()+543} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')} น.`;
+                        }
+                    }
+
                     let adminReplyHtml = '';
                     if(lead.adminReply && lead.adminReply.trim() !== '') {
                         adminReplyHtml = `
@@ -2289,7 +2314,7 @@
                         <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-4 shadow-sm relative overflow-hidden group hover:border-brand-300 transition-colors">
                             <div class="flex justify-between items-start mb-3">
                                 <div>
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5"><i class="ph-bold ph-clock"></i> ${lead.time || 'ไม่ระบุเวลา'}</span>
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5"><i class="ph-bold ph-clock"></i> ${displayTime}</span>
                                     <h4 class="font-black text-dark text-lg">${lead.type === 'ฝากขาย' ? 'รายการฝากขาย' : 'นัดเข้าชมโครงการ'}</h4>
                                     <p class="text-sm text-brand-600 font-bold bg-brand-50 px-2 py-0.5 rounded border border-brand-100 inline-block mt-1">${lead.propertyId}</p>
                                 </div>
@@ -2422,7 +2447,7 @@
             setTimeout(() => document.getElementById('addPropContent').classList.remove('scale-95'), 10);
         }
 
-        function submitAddProperty() { // 🌟 เอาคำว่า async ออก เพื่อให้โค้ดรันต่อเนื่องไม่ต้องรอ
+        function submitAddProperty() { 
             const btn = document.getElementById('btnSubmitProp');
             const originalText = btn.innerHTML;
             btn.innerHTML = COOL_SPINNER + 'กำลังบันทึก...';
@@ -2451,20 +2476,20 @@
 
             try {
                 if(GAS_WEB_APP_URL && GAS_WEB_APP_URL.startsWith("http")) {
-                    // 🌟 ใช้ fetch แบบ Fire-and-forget พร้อม mode: 'no-cors' ให้ระบบทำงานเบื้องหลังได้ลื่นไหล
+                    // 🌟 ใช้ mode: 'no-cors' ป้องกันการขึ้น Failed to fetch
                     fetch(GAS_WEB_APP_URL, { 
                         method: 'POST', 
                         mode: 'no-cors',
                         body: JSON.stringify(payload),
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                    });
+                    }).catch(e => console.log(e));
                 }
                 
-                // อัปเดตหน้าเว็บทันที ไม่ต้องรอผลลัพธ์จาก Server
+                // อัปเดตหน้าเว็บทันที
                 setTimeout(() => {
                     if(editId) {
                         const targetIndex = allProperties.findIndex(p => p.id === editId);
-                        if(targetIndex > -1) allProperties[targetIndex] = payload.data;
+                        if(targetIndex > -1) allProperties[targetIndex] = propData;
                         showToast(`อัปเดตข้อมูลรหัส ${editId} เรียบร้อยแล้ว`, 'success');
                     } else {
                         let maxIdNum = 0;
@@ -2472,11 +2497,9 @@
                             let num = parseInt(String(p.id).replace(/\D/g, '')) || 0;
                             if(num > maxIdNum) maxIdNum = num;
                         });
-                        
-                        let newId = "P" + String(maxIdNum + 1).padStart(3, '0');
-                        payload.data.id = newId;
-                        allProperties.push(payload.data);
-                        showToast(`เพิ่มรายการอสังหาฯ รหัส ${newId} แล้ว`, 'success');
+                        propData.id = "P" + String(maxIdNum + 1).padStart(3, '0');
+                        allProperties.push(propData);
+                        showToast(`เพิ่มรายการอสังหาฯ รหัส ${propData.id} แล้ว`, 'success');
                     }
                     
                     renderAdminProperties(); 
@@ -2485,11 +2508,11 @@
                     
                     btn.innerHTML = originalText; 
                     btn.disabled = false;
-                }, 400);
+                }, 500);
 
             } catch (err) {
                 console.error(err);
-                showToast('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', 'error');
+                showToast('บันทึกไม่สำเร็จ: ' + err.message, 'error');
                 btn.innerHTML = originalText; 
                 btn.disabled = false;
             }
@@ -2555,7 +2578,7 @@
             }, 300);
         }
 
-        function submitBooking() { // 🌟 ปรับปรุงไม่ใช้ async/await ตรงนี้เช่นกัน
+        async function submitBooking() { 
             const btn = document.getElementById('btnSubmitBooking');
             btn.innerHTML = COOL_SPINNER + (currentLang === 'en' ? 'Submitting...' : 'กำลังส่งข้อมูล...'); 
             btn.disabled = true;
@@ -2587,29 +2610,63 @@
 
             try {
                 if(GAS_WEB_APP_URL && GAS_WEB_APP_URL.startsWith("http")) {
-                    fetch(GAS_WEB_APP_URL, { 
+                    const res = await fetch(GAS_WEB_APP_URL, { 
                         method: 'POST', 
-                        mode: 'no-cors', // 🌟 ป้องกัน CORS Error
                         body: JSON.stringify(payload),
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                     });
+                    const json = await res.json();
+                    if(json.status === 'error') throw new Error(json.message);
                 }
 
                 closeModal('bookingModal', 'bookingContent');
-                setTimeout(() => { 
-                    showToast(currentLang === 'en' ? 'Booking submitted successfully!' : 'นัดหมายสำเร็จ! เราได้รับข้อมูลของคุณแล้ว', 'success');
-                    document.getElementById('bookingForm').reset(); 
-                    addMockLeadToAdmin(mockData, 'ซื้อบ้าน');
-                    btn.innerHTML = currentLang === 'en' ? 'Confirm Booking <i class="ph-bold ph-arrow-right"></i>' : 'ยืนยันนัดหมาย <i class="ph-bold ph-arrow-right"></i>'; 
-                    btn.disabled = false;
-                }, 400);
+                showToast(currentLang === 'en' ? 'Booking submitted successfully!' : 'นัดหมายสำเร็จ! เราได้รับข้อมูลของคุณแล้ว', 'success');
+                document.getElementById('bookingForm').reset(); 
+                addMockLeadToAdmin(mockData, 'ซื้อบ้าน');
 
             } catch (err) {
                 console.error(err);
-                showToast(currentLang === 'en' ? 'Error submitting booking.' : 'เกิดข้อผิดพลาดในการส่งข้อมูล', 'error');
+                showToast(currentLang === 'en' ? 'Error submitting booking.' : 'เกิดข้อผิดพลาดในการส่งข้อมูล: ' + err.message, 'error');
+            } finally {
                 btn.innerHTML = currentLang === 'en' ? 'Confirm Booking <i class="ph-bold ph-arrow-right"></i>' : 'ยืนยันนัดหมาย <i class="ph-bold ph-arrow-right"></i>'; 
                 btn.disabled = false;
             }
+        }
+
+        // 🌟 ฟังก์ชันบีบอัดรูปภาพให้เบาลง ป้องกัน Sheet พัง (จำกัด Max 50,000 characters)
+        async function getProcessedImageBase64(fileInputId, urlInputId) {
+            const fileInput = document.getElementById(fileInputId);
+            const urlInput = document.getElementById(urlInputId);
+
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 500; // บีบความกว้างลงมาที่ 500px ให้ภาพเบาที่สุด
+                            let width = img.width;
+                            let height = img.height;
+                            if (width > MAX_WIDTH) {
+                                height = Math.round((height * MAX_WIDTH) / width);
+                                width = MAX_WIDTH;
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            
+                            // ลดคุณภาพเหลือ 0.5 โค้ดจะสั้นลงเยอะ ปลอดภัยสำหรับ Google Sheet แน่นอน
+                            let dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                            resolve(dataUrl);
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(fileInput.files[0]);
+                });
+            }
+            return urlInput ? urlInput.value : null;
         }
 
         async function submitConsign() {
@@ -2663,17 +2720,16 @@
 
             try {
                 if(GAS_WEB_APP_URL && GAS_WEB_APP_URL.startsWith("http")) {
-                    // 🌟 ดึงข้อมูลไป Google Sheet ทันทีด้วย no-cors
-                    fetch(GAS_WEB_APP_URL, { 
+                    const res1 = await fetch(GAS_WEB_APP_URL, { 
                         method: 'POST', 
-                        mode: 'no-cors',
                         body: JSON.stringify({ action: 'add_property', data: propData }),
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                     });
+                    const json1 = await res1.json();
+                    if(json1.status === 'error') throw new Error(json1.message);
                     
-                    fetch(GAS_WEB_APP_URL, { 
+                    const res2 = await fetch(GAS_WEB_APP_URL, { 
                         method: 'POST', 
-                        mode: 'no-cors',
                         body: JSON.stringify({ action: 'book_tour', data: {
                             propertyId: "ฝากขาย " + newPropId,
                             name: name,
@@ -2682,24 +2738,23 @@
                         } }),
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                     });
+                    const json2 = await res2.json();
+                    if(json2.status === 'error') throw new Error(json2.message);
                 }
                 
-                setTimeout(() => { 
-                    allProperties.push(propData);
-                    renderAdminProperties();
+                allProperties.push(propData);
+                renderAdminProperties();
 
-                    closeModal('consignModal', 'consignContent');
-                    showToast(currentLang === 'en' ? 'Property submitted for appraisal successfully!' : 'ส่งประกาศฝากขายสำเร็จ! ทีมงานจะรีบติดต่อกลับ', 'success');
-                    document.getElementById('consignForm').reset(); 
-                    document.getElementById('consignImagePreviewContainer').classList.add('hidden'); 
-                    addMockLeadToAdmin(leadData, 'ฝากขาย');
-                    
-                    btn.innerHTML = currentLang === 'en' ? '<i class="ph-bold ph-paper-plane-right"></i> Submit' : '<i class="ph-bold ph-paper-plane-right"></i> ส่งข้อมูลให้ประเมิน'; 
-                    btn.disabled = false;
-                }, 500);
+                closeModal('consignModal', 'consignContent');
+                showToast('ส่งประกาศฝากขายสำเร็จ! ทีมงานจะรีบติดต่อกลับ', 'success');
+                document.getElementById('consignForm').reset(); 
+                document.getElementById('consignImagePreviewContainer').classList.add('hidden'); 
+                addMockLeadToAdmin(leadData, 'ฝากขาย');
 
             } catch (e) {
-                console.log(e);
+                console.error(e);
+                showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+            } finally {
                 btn.innerHTML = currentLang === 'en' ? '<i class="ph-bold ph-paper-plane-right"></i> Submit' : '<i class="ph-bold ph-paper-plane-right"></i> ส่งข้อมูลให้ประเมิน'; 
                 btn.disabled = false;
             }
@@ -2814,9 +2869,10 @@
             if(lead.type === 'ฝากขาย') {
                 badgeEl.innerHTML = `<span class="bg-purple-100 text-purple-700 border border-purple-200 px-3 py-1 rounded-md font-bold text-xs">ฝากขาย</span>`;
                 selectEl.innerHTML = `
-                    <option value="รออนุมัติ">รออนุมัติ (Pending)</option>
-                    <option value="อนุมัติ">อนุมัติ (Approve to Web)</option>
-                    <option value="ไม่อนุมัติ">ไม่อนุมัติ (Reject)</option>
+                    <option value="รออนุมัติ">รออนุมัติ</option>
+                    <option value="อนุมัติ">อนุมัติ</option>
+                    <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
+                    <option value="ขายแล้ว">ขายแล้ว</option>
                 `;
             } else {
                 badgeEl.innerHTML = `<span class="bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1 rounded-md font-bold text-xs">สนใจ ${lead.propertyId}</span>`;
