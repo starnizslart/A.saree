@@ -2259,15 +2259,54 @@
         }
 
         // 🌟 7. ฟังก์ชันเปิดประวัติการทำรายการ (ฝั่งลูกค้า)
-        function openHistoryModal() {
+        async function openHistoryModal() {
             if(!currentUser) return;
 
             const modal = document.getElementById('historyModal');
             const container = document.getElementById('historyListContainer');
-            container.innerHTML = '';
+            
+            // แสดงสถานะกำลังโหลดระหว่างดึงข้อมูลแบบ Real-time
+            container.innerHTML = `
+                <div class="text-center py-16 flex flex-col items-center justify-center">
+                    ${COOL_SPINNER.replace('w-5 h-5', 'w-12 h-12 text-brand-500 mb-4')}
+                    <p class="text-slate-500 font-bold text-lg">กำลังดึงข้อมูลล่าสุดจากระบบ...</p>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
+            setTimeout(() => document.getElementById('historyContent').classList.remove('scale-95'), 10);
 
-            // ดึงประวัติที่เป็นของลูกค้าคนนี้ (เช็คจากเบอร์โทร)
-            const userLeads = globalLeadsData.filter(l => l.phone === currentUser.phone || l.phone === formatPhone(currentUser.phone));
+            try {
+                // 🌟 วิ่งไปดึงข้อมูลจาก Google Sheet ใหม่สดๆ ทุกครั้งที่กดเปิด
+                if(GAS_WEB_APP_URL && GAS_WEB_APP_URL.startsWith("http")) {
+                    const response = await fetch(GAS_WEB_APP_URL);
+                    const data = await response.json();
+                    globalLeadsData = data.leads || [];
+                    
+                    const fetchedProps = data.properties || [];
+                    const sheetIds = fetchedProps.map(p => p.id);
+                    const activeMocks = mockProperties.filter(m => !sheetIds.includes(m.id));
+                    allProperties = [...activeMocks, ...fetchedProps];
+                }
+            } catch (err) {
+                console.log("Could not fetch fresh leads:", err);
+            }
+
+            // 🌟 ปรับระบบกรองข้อมูลให้แม่นยำขึ้น โดยตัดขีดและช่องว่างออกให้หมด และเช็คจากชื่อเผื่อไว้ด้วย
+            const userPhoneRaw = String(currentUser.phone || '').replace(/\D/g, '');
+            const userNameClean = String(currentUser.name || '').trim().toLowerCase();
+
+            const userLeads = globalLeadsData.filter(l => {
+                const leadPhoneRaw = String(l.phone || '').replace(/\D/g, '');
+                const leadNameClean = String(l.name || '').trim().toLowerCase();
+                // ตรงกันถ้าเบอร์เหมือนกัน หรือ ชื่อตรงกันเป๊ะ
+                return (leadPhoneRaw === userPhoneRaw && leadPhoneRaw.length >= 9) || 
+                       (leadNameClean === userNameClean && leadNameClean.length > 0);
+            });
+
+            container.innerHTML = '';
 
             if(userLeads.length === 0) {
                 container.innerHTML = `
@@ -2282,15 +2321,15 @@
                 // แสดงข้อมูลล่าสุดก่อน
                 [...userLeads].reverse().forEach(lead => {
                     let statusColor = "bg-amber-100 text-amber-700 border border-amber-200"; 
-                    if(lead.status === "New Lead" || lead.status === 'ลูกค้ารอติดต่อ (New)' || lead.status === 'รออนุมัติ') statusColor = "bg-slate-100 text-slate-600 border border-slate-200"; // ฝั่งลูกค้าให้ดูเป็นสีเทาๆ รอดำเนินการ
+                    if(lead.status === "New Lead" || lead.status === 'ลูกค้ารอติดต่อ (New)' || lead.status === 'รออนุมัติ') statusColor = "bg-slate-100 text-slate-600 border border-slate-200"; 
                     else if(lead.status === "นัดชมบ้าน" || lead.status === "กำลังเจรจา") statusColor = "bg-blue-100 text-blue-700 border border-blue-200";
                     else if(lead.status === "ปิดการขาย" || lead.status === "อนุมัติ" || lead.status === "Available") statusColor = "bg-emerald-100 text-emerald-700 border border-emerald-200";
                     else if(lead.status === "ยกเลิก" || lead.status === "ไม่อนุมัติ") statusColor = "bg-rose-100 text-rose-700 border border-rose-200";
                     
                     let displayStatus = lead.status;
                     if(displayStatus === "New Lead") displayStatus = "กำลังรอเจ้าหน้าที่ติดต่อกลับ";
+                    if(displayStatus === "กำลังเจรจา") displayStatus = "กำลังเจรจา / ดำเนินการ";
 
-                    // 🌟 จัดรูปแบบเวลาให้สวยงาม ป้องกันคำว่า เวลาอินโดจีน
                     let displayTime = lead.time || 'ไม่ระบุเวลา';
                     if (displayTime.includes('GMT') || displayTime.includes('เวลาอินโดจีน')) {
                         let d = new Date(displayTime);
@@ -2331,11 +2370,6 @@
                     `;
                 });
             }
-
-            modal.classList.remove('hidden'); modal.classList.add('flex');
-            void modal.offsetWidth;
-            modal.classList.remove('opacity-0');
-            setTimeout(() => document.getElementById('historyContent').classList.remove('scale-95'), 10);
         }
 
         // ==========================================
